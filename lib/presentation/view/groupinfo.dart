@@ -1,53 +1,95 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatroom_chatbot/presentation/view/editgroupscreen.dart';
+import 'package:chatroom_chatbot/presentation/view/newmemberscreen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/model/chatgroup.dart';
-import '../../data/model/userprofile.dart';
+import '../../data/model/member.dart';
+import '../../data/model/user_profile.dart';
+import '../viewModel.dart';
 
 List<UserProfile> sampleProfiles = [
   UserProfile(
-    profileImageURL: "https://randomuser.me/api/portraits/men/1.jpg",
+    image: "https://randomuser.me/api/portraits/men/1.jpg",
     name: "John Doe",
   ),
   UserProfile(
-    profileImageURL: "https://randomuser.me/api/portraits/men/2.jpg",
+    image: "https://randomuser.me/api/portraits/men/2.jpg",
     name: "Jane Smith",
   ),
   UserProfile(
-    profileImageURL: "https://randomuser.me/api/portraits/men/3.jpg",
+    image: "https://randomuser.me/api/portraits/men/3.jpg",
     name: "Michael Johnson",
   ),
   UserProfile(
-    profileImageURL: "https://randomuser.me/api/portraits/men/4.jpg",
+    image: "https://randomuser.me/api/portraits/men/4.jpg",
     name: "Sandy",
   ),
   UserProfile(
-    profileImageURL: "https://randomuser.me/api/portraits/men/5.jpg",
+    image: "https://randomuser.me/api/portraits/men/5.jpg",
     name: "Joseph",
   ),
   UserProfile(
-    profileImageURL: "https://randomuser.me/api/portraits/men/6.jpg",
+    image: "https://randomuser.me/api/portraits/men/6.jpg",
     name: "Arya",
   ),
   UserProfile(
-    profileImageURL: "https://randomuser.me/api/portraits/men/7.jpg",
+    image: "https://randomuser.me/api/portraits/men/7.jpg",
     name: "Michael Tyson",
   ),
 ];
 
-class GroupInfoScreen extends StatefulWidget {
+class GroupInfoScreen extends ConsumerStatefulWidget {
   final ChatGroup chatGroup;
 
   const GroupInfoScreen({required this.chatGroup});
 
   @override
-  State<GroupInfoScreen> createState() => _GroupInfoScreenState();
+  ConsumerState<GroupInfoScreen> createState() => _GroupInfoScreenState();
 }
 
-class _GroupInfoScreenState extends State<GroupInfoScreen> {
+class _GroupInfoScreenState extends ConsumerState<GroupInfoScreen> {
+
+  @override
+  void initState() {
+    WidgetsBinding.instance?.addPostFrameCallback((_) async {
+      // ref.read(chatGroupsProvider).fetchUserProfiles();
+      await ref.read(chatGroupsProvider).fetchChatMembers(widget.chatGroup.id!);
+      await ref.read(chatGroupsProvider).fetchChatGroup(widget.chatGroup.id!);
+    });
+  }
+
+  Future<void> _navigateToUpdateScreen() async {
+   /* final updatedChatGroup = await  Navigator.of(context).push(MaterialPageRoute(
+        builder: (context) => EditChatGroupScreen(
+          chatGroup: widget.chatGroup,
+        )
+    )
+    );*/
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (context) => EditChatGroupScreen(
+      chatGroup: widget.chatGroup,
+    ),
+    )
+    );
+    /*if (updatedChatGroup != null && updatedChatGroup is ChatGroup) {
+      setState(() {
+      _chatgroup = updatedChatGroup;
+      });
+    }*/
+  }
+
+
   @override
   Widget build(BuildContext context) {
+
+    final _chatGroup = ref.watch(chatGroupsProvider).selectedChatGroup;
+
+    // final _members = ref.watch(chatGroupsProvider).userProfiles;
+
+    final _members = ref.watch(chatGroupsProvider).members;
+
     return Scaffold(
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,7 +113,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     CachedNetworkImage(
-                      imageUrl: widget.chatGroup.image,
+                      imageUrl: _chatGroup.image,
                       placeholder: (context, url) => CircleAvatar(
                         backgroundColor: Colors.grey, // Placeholder color
                         child: Icon(Icons.person), // Placeholder icon
@@ -91,7 +133,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                       height: 20,
                     ),
                     Text(
-                      widget.chatGroup.name,
+                      _chatGroup.name,
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -101,7 +143,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                       height: 10,
                     ),
                     Text(
-                      '100 Members',
+                      '${_members.length} Members',
                       style: TextStyle(fontSize: 12, color: Colors.white),
                     ),
                     SizedBox(
@@ -112,7 +154,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                 Spacer(),
                 IconButton(
                   icon: Icon(Icons.edit, color: Colors.white),
-                  onPressed: () {
+                  onPressed: _navigateToUpdateScreen
                     // Handle edit button press
 
                    /* void _editGroup() async {
@@ -132,11 +174,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                       }
                     }*/
 
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) => EditChatGroupScreen(
-                              chatGroup: widget.chatGroup,
-                            )));
-                  },
+
+                  ,
                 ),
               ],
             ),
@@ -146,7 +185,15 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
             width: double.infinity,
             height: 4,
           ),*/
-          Container(
+          InkWell(
+          onTap: () {
+          // Navigate to another screen using Navigator
+          Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => NewChatMemberScreen(chatGroup: _chatGroup,)),
+          );
+          },
+          child: Container(
             color: Colors.white,
             padding: EdgeInsets.symmetric(vertical: 10),
             child: Row(
@@ -167,6 +214,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                 ),
               ],
             ),
+          ),
           ),
           Container(
             color: Colors.grey[300],
@@ -198,10 +246,12 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
           Expanded(
             child: ListView.builder(
               padding: EdgeInsets.all(0),
-              itemCount: sampleProfiles.length,
+              itemCount: _members.length,
               // Replace with the actual number of members
               itemBuilder: (context, index) {
-                UserProfile profile = sampleProfiles[index];
+                // UserProfile profile = _members[index];
+                Member profile = _members[index];
+
                 return Column(
                   children: [
                     Container(
@@ -210,7 +260,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           CachedNetworkImage(
-                            imageUrl: profile.profileImageURL,
+                            imageUrl: profile.imageUrl,
                             placeholder: (context, url) => CircleAvatar(
                               backgroundColor: Colors.grey,
                               // Placeholder color

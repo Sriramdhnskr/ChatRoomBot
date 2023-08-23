@@ -1,40 +1,38 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chatroom_chatbot/presentation/view/widgets/custom_edit_appbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 
 import '../../data/model/chatgroup.dart';
+import '../../data/model/member.dart';
 import '../viewModel.dart';
 
 final Logger _logger = Logger();
 
-class EditChatGroupScreen extends ConsumerStatefulWidget {
+class NewChatMemberScreen extends ConsumerStatefulWidget {
   final ChatGroup chatGroup;
 
-  EditChatGroupScreen({required this.chatGroup});
+  const NewChatMemberScreen({required this.chatGroup});
 
   @override
-  _EditChatGroupScreenState createState() => _EditChatGroupScreenState();
+  _NewChatMemberScreenState createState() => _NewChatMemberScreenState();
 }
 
-class _EditChatGroupScreenState extends ConsumerState<EditChatGroupScreen> {
+class _NewChatMemberScreenState extends ConsumerState<NewChatMemberScreen> {
+  TextEditingController _OLMIdController = TextEditingController();
 
-  late TextEditingController _groupNameController;
-  late String _groupImage;
+  String _selectedUserImage = ''; // Store the selected group image URL
 
-  @override
-  void initState() {
-    super.initState();
-    _groupNameController = TextEditingController(text: widget.chatGroup.name);
-    _groupImage = widget.chatGroup.image;
+  bool _isButtonEnabled = false;
+
+  void _validateInput(String text) {
+    String input = _OLMIdController.text;
+    bool isValid = input.length == 8 && RegExp(r'^[a-zA-Z0-9]+$').hasMatch(input);
+    setState(() {
+      _isButtonEnabled = isValid;
+    });
   }
 
-  @override
-  void dispose() {
-    _groupNameController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +43,7 @@ class _EditChatGroupScreenState extends ConsumerState<EditChatGroupScreen> {
           child: Padding(
               padding: EdgeInsets.symmetric(vertical: 0, horizontal: 0),
               child: CustomAppBar(
-                title: 'Edit Group',
+                title: 'Add Member',
                 onBack: () => Navigator.pop(context),
                 onTick: () => Navigator.pop(context),
               )),
@@ -56,28 +54,23 @@ class _EditChatGroupScreenState extends ConsumerState<EditChatGroupScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(height: 16),
-              CachedNetworkImage(
-                imageUrl: _groupImage,
-                placeholder: (context, url) => CircleAvatar(
-                  backgroundColor: Colors.grey, // Placeholder color
-                  child: Icon(Icons.person),    // Placeholder icon
-                  radius: 60,
-                ),
-                errorWidget: (context, url, error) => CircleAvatar(
-                  backgroundColor: Colors.grey, // Placeholder color
-                  child: Icon(Icons.person),    // Placeholder icon
-                  radius: 60,
-                ), // Error widget
-                imageBuilder: (context, imageProvider) => CircleAvatar(
-                  backgroundImage: imageProvider,
-                  radius: 60,
+              CircleAvatar(
+                radius: 60,
+                backgroundColor: Colors.grey[400],
+                child: IconButton(
+                  icon: Icon(Icons.add_a_photo_outlined,
+                      color: Colors.white, size: 45),
+                  onPressed: () {
+                    // Handle profile image upload
+                  },
                 ),
               ),
               SizedBox(height: 16),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: TextField(
-                  controller: _groupNameController,
+                  controller: _OLMIdController,
+                  onChanged: _validateInput,
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10.0),
@@ -91,7 +84,7 @@ class _EditChatGroupScreenState extends ConsumerState<EditChatGroupScreen> {
                       borderRadius: BorderRadius.circular(10.0),
                       borderSide: BorderSide(color: Colors.blue,width: 2),
                     ), // Remove default border
-                    hintText: 'Enter Group Name',
+                    hintText: 'Enter OLM ID',
                   ),
                 ),
               ),
@@ -100,35 +93,44 @@ class _EditChatGroupScreenState extends ConsumerState<EditChatGroupScreen> {
           ),
         ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Theme.of(context).primaryColor,
-        onPressed: () {
+        backgroundColor: _isButtonEnabled ? Theme.of(context).primaryColor : Colors.grey,
+        onPressed: _isButtonEnabled ? () async {
           // Handle New Group button pressed
-          final groupName = _groupNameController.text;
+          final OLMId = _OLMIdController.text;
 
-          if (groupName.isNotEmpty || _groupImage.isNotEmpty) {
+          if (OLMId.isNotEmpty || _selectedUserImage.isNotEmpty) {
             final viewModel = ref.read(chatGroupsProvider);
 
-            final updatedChatGroup = ChatGroup(
-              id: widget.chatGroup.id,
-              time: widget.chatGroup.time,
-              name: groupName,
-              lastMessage: widget.chatGroup.lastMessage,
-              image: _groupImage,
-              timestamp: widget.chatGroup.timestamp, // Set the group image
-            );
+            try {
+              final user = await viewModel.getUser(OLMId);
+              print('Username: ${user.username}');
+              print('Image URL: ${user.image}');
 
-            _logger.d("${updatedChatGroup}");
+              final newMember = Member(name: user.username,imageUrl: user.image,);
 
-            print("Edited groupname : ${groupName} and ${updatedChatGroup}");
+              _logger.d(newMember);
 
-            viewModel.updateChatGroup(updatedChatGroup);
-            Navigator.pop(context, updatedChatGroup);
+              viewModel.addMember(widget.chatGroup, newMember);
+
+            } catch (e) {
+              print('User not found.');
+            }
+
+            // viewModel.addChatGroup(groupName,_selectedGroupImage);
+            Navigator.pop(context);
           }
-        },
+        }
+        : null,
         child: Icon(Icons.check,color: Colors.white,),
         shape: CircleBorder(),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat, // Adjust the position as needed
     );
+  }
+
+  @override
+  void dispose() {
+    _OLMIdController.dispose();
+    super.dispose();
   }
 }

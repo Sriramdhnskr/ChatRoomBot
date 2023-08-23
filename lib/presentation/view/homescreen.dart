@@ -19,7 +19,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String searchQuery = '';
 
 
- /* @override
+  @override
+  void dispose() {
+    print('Home screen dispose state');
+  }
+
+  @override
+  void initState(){
+    print('Home screen init state');
+   /* WidgetsBinding.instance?.addPostFrameCallback((_) async {
+      await ref.read(chatGroupsProvider).fetchChatGroups();
+      await ref.read(chatGroupsProvider).fetchMembers();
+    });*/
+    ref.read(chatGroupsProvider).fetchChatGroups();
+   // initfetchData();
+  }
+
+    void initfetchData() async{
+    await ref.read(chatGroupsProvider).fetchChatGroups();
+    // await ref.read(chatGroupsProvider).fetchMembers();
+   }
+
+  /* @override
   void initState() {
     super.initState();
     chatGroups = ref.watch(chatGroupsProvider).chatGroups;
@@ -48,10 +69,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
 
+    print('Home screen build state state');
+
     final chatGroups = ref.watch(chatGroupsProvider).chatGroups;
-    
+
+    final chatMembers = ref.watch(chatGroupsProvider).chatmembers;
+
+    print("Chat members : ${chatMembers.toString()}");
+
+   /* chatGroups.forEach((element) {
+      print(element.toString());
+    });*/
+
     filteredGroups = chatGroups;
-    
+
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(40),
@@ -101,28 +132,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            itemCount: filteredGroups.length,
-            itemBuilder: (context, index) {
-              return InkWell(
-                onTap: () {
-                  _openChatDetailScreen(filteredGroups[index]);
-                },
-                child: Column(
-                  children: [
-                    ChatGroupTile(filteredGroups[index]),
-                    Padding(
-                      padding: EdgeInsets.only(left: 62),
-                      // Add padding to align divider
-                      child: Divider(
-                          height: 0,
-                          color: Colors.grey[400],
-                          thickness: 0.5), // Customized divider
-                    ),
-                  ],
-                ),
-              );
+          child:
+          RefreshIndicator(
+            color: Theme.of(context).primaryColor,
+            onRefresh: () async {
+              await ref.watch(chatGroupsProvider).fetchChatGroups();
             },
+            child: ListView.builder(
+              itemCount: filteredGroups.length,
+              itemBuilder: (context, index) {
+                return InkWell(
+                  onTap: () {
+                    _openChatDetailScreen(filteredGroups[index]);
+                  },
+                  child: Column(
+                    children: [
+                      ChatGroupTile(filteredGroups[index]),
+                      Padding(
+                        padding: EdgeInsets.only(left: 62),
+                        // Add padding to align divider
+                        child: Divider(
+                            height: 0,
+                            color: Colors.grey[400],
+                            thickness: 0.5), // Customized divider
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ]),

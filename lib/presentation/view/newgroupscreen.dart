@@ -86,17 +86,19 @@ class _NewChatGroupScreenState extends ConsumerState<NewChatGroupScreen> {
           if (groupName.isNotEmpty || _selectedGroupImage.isNotEmpty) {
             final viewModel = ref.read(chatGroupsProvider);
             final newGroup = ChatGroup(
-              id: 0,
-              time: DateTime
+              // id: DateTime.now().millisecondsSinceEpoch,
+              time: formatDateTime(DateTime
                   .now()
-                  .millisecondsSinceEpoch
-                  .toString(),
+              ),
               name: groupName,
               lastMessage: 'No messages yet',
-              image: _selectedGroupImage, // Set the group image
+              image: _selectedGroupImage,
+              timestamp: DateTime.now().millisecondsSinceEpoch,// Set the group image
             );
 
             _logger.d(newGroup);
+
+            viewModel.addChatGroup(newGroup);
 
             // viewModel.addChatGroup(groupName,_selectedGroupImage);
             Navigator.pop(context);
